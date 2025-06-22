@@ -20,7 +20,11 @@ pub fn create_database() -> Result<Connection> {
     })?;
 
     let conn = Connection::open("data/lottery.db")?;
+    create_database_with_connection(&conn)?;
+    Ok(conn)
+}
 
+pub fn create_database_with_connection(conn: &Connection) -> Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS lottery_results (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,7 +49,7 @@ pub fn create_database() -> Result<Connection> {
         [],
     )?;
 
-    Ok(conn)
+    Ok(())
 }
 
 pub fn save_lottery_result(conn: &Connection, result: &LotteryResult) -> Result<()> {
