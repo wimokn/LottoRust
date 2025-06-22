@@ -1,8 +1,8 @@
-use rusqlite::{Connection, Result, OptionalExtension};
+use crate::types::{LotteryData, LotteryResult, LotteryResultRow, PrizeNumberRow};
+use rusqlite::{Connection, OptionalExtension, Result};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
-use crate::types::{LotteryResult, LotteryData, LotteryResultRow, PrizeNumberRow};
 
 pub fn ensure_directories() -> Result<(), Box<dyn Error>> {
     fs::create_dir_all("data")?;
@@ -12,11 +12,13 @@ pub fn ensure_directories() -> Result<(), Box<dyn Error>> {
 }
 
 pub fn create_database() -> Result<Connection> {
-    ensure_directories().map_err(|e| rusqlite::Error::SqliteFailure(
-        rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CANTOPEN),
-        Some(format!("Failed to create directories: {}", e))
-    ))?;
-    
+    ensure_directories().map_err(|e| {
+        rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CANTOPEN),
+            Some(format!("Failed to create directories: {}", e)),
+        )
+    })?;
+
     let conn = Connection::open("data/lottery.db")?;
 
     conn.execute(
@@ -172,7 +174,10 @@ pub fn get_prize_numbers_by_lottery_id(
     Ok(results)
 }
 
-pub fn get_prize_numbers_by_category(conn: &Connection, category: &str) -> Result<Vec<PrizeNumberRow>> {
+pub fn get_prize_numbers_by_category(
+    conn: &Connection,
+    category: &str,
+) -> Result<Vec<PrizeNumberRow>> {
     let mut stmt = conn.prepare(
         "SELECT pn.id, pn.lottery_id, pn.category, pn.prize_amount, pn.number_value, pn.round_number 
          FROM prize_numbers pn 
@@ -242,10 +247,131 @@ pub fn get_latest_lottery_results(conn: &Connection, limit: i32) -> Result<Vec<L
     let mut stmt = conn.prepare(
         "SELECT id, draw_date, period, created_at 
          FROM lottery_results 
-         ORDER BY draw_date DESC 
+         ORDER BY draw_date DESC
          LIMIT ?1",
     )?;
+
     let lottery_iter = stmt.query_map([limit], |row| {
+        Ok(LotteryResultRow {
+            id: row.get(0)?,
+            draw_date: row.get(1)?,
+            period: row.get(2)?,
+            created_at: row.get(3)?,
+        })
+    })?;
+
+    let mut results = Vec::new();
+    for lottery in lottery_iter {
+        results.push(lottery?);
+    }
+    Ok(results)
+}
+
+pub fn get_lottery_results_by_date_range(
+    conn: &Connection,
+    start_date: &str,
+    end_date: &str,
+) -> Result<Vec<LotteryResultRow>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, draw_date, period, created_at 
+         FROM lottery_results 
+         WHERE draw_date >= ?1 AND draw_date <= ?2
+         ORDER BY draw_date DESC",
+    )?;
+    let lottery_iter = stmt.query_map([start_date, end_date], |row| {
+        Ok(LotteryResultRow {
+            id: row.get(0)?,
+            draw_date: row.get(1)?,
+            period: row.get(2)?,
+            created_at: row.get(3)?,
+        })
+    })?;
+
+    let mut results = Vec::new();
+    for lottery in lottery_iter {
+        results.push(lottery?);
+    }
+    Ok(results)
+}
+
+pub fn get_lottery_results_by_year(conn: &Connection, year: &str) -> Result<Vec<LotteryResultRow>> {
+    let start_date = format!("{}-01-01", year);
+    let end_date = format!("{}-12-31", year);
+    get_lottery_results_by_date_range(conn, &start_date, &end_date)
+}
+
+pub fn get_lottery_results_by_month(
+    conn: &Connection,
+    year: &str,
+    month: &str,
+) -> Result<Vec<LotteryResultRow>> {
+    let start_date = format!("{}-{:0>2}-01", year, month);
+    let end_date = format!("{}-{:0>2}-31", year, month);
+    get_lottery_results_by_date_range(conn, &start_date, &end_date)
+}
+
+pub fn get_lottery_results_after_date(
+    conn: &Connection,
+    date: &str,
+    limit: Option<i32>,
+) -> Result<Vec<LotteryResultRow>> {
+    let query = if let Some(limit_val) = limit {
+        format!(
+            "SELECT id, draw_date, period, created_at 
+             FROM lottery_results 
+             WHERE draw_date >= ?1
+             LIMIT {}",
+            limit_val
+        )
+    } else {
+        "SELECT id, draw_date, period, created_at 
+         FROM lottery_results 
+         WHERE draw_date >= ?1
+         ORDER BY draw_date DESC"
+            .to_string()
+    };
+
+    let mut stmt = conn.prepare(&query)?;
+    let lottery_iter = stmt.query_map([date], |row| {
+        Ok(LotteryResultRow {
+            id: row.get(0)?,
+            draw_date: row.get(1)?,
+            period: row.get(2)?,
+            created_at: row.get(3)?,
+        })
+    })?;
+
+    let mut results = Vec::new();
+    for lottery in lottery_iter {
+        results.push(lottery?);
+    }
+    Ok(results)
+}
+
+pub fn get_lottery_results_before_date(
+    conn: &Connection,
+    date: &str,
+    limit: Option<i32>,
+) -> Result<Vec<LotteryResultRow>> {
+    let query = if let Some(limit_val) = limit {
+        format!(
+            "SELECT id, draw_date, period, created_at 
+             FROM lottery_results 
+             WHERE draw_date <= ?1
+             ORDER BY draw_date DESC
+             LIMIT {}",
+            limit_val
+        )
+    } else {
+        "SELECT id, draw_date, period, created_at 
+         FROM lottery_results 
+         WHERE draw_date <= ?1
+         ORDER BY draw_date DESC"
+            .to_string()
+    };
+
+    let mut stmt = conn.prepare(&query)?;
+    let lottery_iter = stmt.query_map([date], |row| {
         Ok(LotteryResultRow {
             id: row.get(0)?,
             draw_date: row.get(1)?,

@@ -1,8 +1,10 @@
-use reqwest;
-use std::error::Error;
+use crate::database::{check_existing_dates, save_multiple_lottery_results};
 use crate::types::{LotteryRequest, LotteryResponse, LotteryResult};
-use crate::database::{save_multiple_lottery_results, check_existing_dates};
+use reqwest;
 use rusqlite::Connection;
+use std::error::Error;
+use std::thread::sleep;
+use std::time::Duration;
 
 pub async fn fetch_lottery_result(
     date: &str,
@@ -50,10 +52,10 @@ pub async fn fetch_and_save_multiple_results(
     }
 
     println!("📥 Need to fetch {} new dates:", dates_to_fetch.len());
-    for (date, month, year) in &dates_to_fetch {
-        println!("   → {}/{}/{}", date, month, year);
-    }
-    println!();
+    // for (date, month, year) in &dates_to_fetch {
+    //     println!("   → {}/{}/{}", date, month, year);
+    // }
+    // println!();
 
     let mut all_results = Vec::new();
 
@@ -90,6 +92,7 @@ pub async fn fetch_and_save_multiple_results(
                 );
             }
         }
+        sleep(Duration::from_secs(1));
     }
 
     if !all_results.is_empty() {
