@@ -7,7 +7,6 @@ use std::fs;
 pub fn ensure_directories() -> Result<(), Box<dyn Error>> {
     fs::create_dir_all("data")?;
     fs::create_dir_all("reports")?;
-    println!("📁 Ensured directories: data/, reports/");
     Ok(())
 }
 
