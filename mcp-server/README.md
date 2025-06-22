@@ -43,7 +43,7 @@ The MCP server exposes the following tools to Claude:
        "lottery": {
          "command": "cargo",
          "args": ["run", "--bin", "lottery-mcp-server"],
-         "cwd": "/path/to/LottoRust/mcp-server",
+         "cwd": "/Users/wimokn/Projects/W1m0k/LottoRust/mcp-server",
          "env": {
            "LOTTERY_DB_PATH": "../data/lottery.db"
          }
@@ -51,6 +51,8 @@ The MCP server exposes the following tools to Claude:
      }
    }
    ```
+   
+   **Note**: Replace the `cwd` path with your actual project path.
 
 3. **Restart Claude**
    

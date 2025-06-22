@@ -22,14 +22,14 @@ pub struct ResponseData {
     pub result: Option<LotteryResult>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Serialize)]
 pub struct LotteryResult {
     pub date: String,
     pub period: Vec<i32>,
     pub data: LotteryData,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Serialize)]
 pub struct LotteryData {
     pub first: PrizeCategory,
     pub second: PrizeCategory,
@@ -42,19 +42,19 @@ pub struct LotteryData {
     pub near1: PrizeCategory,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Serialize)]
 pub struct PrizeCategory {
     pub price: String,
     pub number: Vec<PrizeNumber>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Serialize)]
 pub struct PrizeNumber {
     pub round: i32,
     pub value: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct LotteryResultRow {
     pub id: i64,
     pub draw_date: String,
@@ -62,7 +62,7 @@ pub struct LotteryResultRow {
     pub created_at: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct PrizeNumberRow {
     pub id: i64,
     pub lottery_id: i64,

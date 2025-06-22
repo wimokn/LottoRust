@@ -3,7 +3,6 @@ use rusqlite::{Connection, OptionalExtension, Result};
 use serde_json::Value;
 use std::error::Error;
 use std::fs;
-use std::path::Path;
 
 pub fn ensure_directories() -> Result<(), Box<dyn Error>> {
     fs::create_dir_all("data")?;
