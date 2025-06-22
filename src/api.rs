@@ -52,11 +52,6 @@ pub async fn fetch_and_save_multiple_results(
     }
 
     println!("📥 Need to fetch {} new dates:", dates_to_fetch.len());
-    // for (date, month, year) in &dates_to_fetch {
-    //     println!("   → {}/{}/{}", date, month, year);
-    // }
-    // println!();
-
     let mut all_results = Vec::new();
 
     for (date, month, year) in dates_to_fetch {

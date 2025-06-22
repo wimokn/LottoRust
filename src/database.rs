@@ -1,5 +1,6 @@
 use crate::types::{LotteryData, LotteryResult, LotteryResultRow, PrizeNumberRow};
 use rusqlite::{Connection, OptionalExtension, Result};
+use serde_json::Value;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
@@ -422,4 +423,128 @@ pub fn check_existing_dates(
     }
 
     Ok((dates_to_fetch, existing_dates))
+}
+
+pub fn parse_and_insert_raw_json(conn: &Connection, raw_json: &str) -> Result<i64> {
+    let json_value: Value = serde_json::from_str(raw_json).map_err(|e| {
+        rusqlite::Error::InvalidColumnType(
+            0,
+            format!("Invalid JSON: {}", e),
+            rusqlite::types::Type::Text,
+        )
+    })?;
+
+    if !json_value
+        .get("status")
+        .and_then(|s| s.as_bool())
+        .unwrap_or(false)
+    {
+        return Err(rusqlite::Error::InvalidColumnType(
+            0,
+            "JSON status is false".to_string(),
+            rusqlite::types::Type::Text,
+        ));
+    }
+
+    let result = json_value
+        .get("response")
+        .and_then(|r| r.get("result"))
+        .ok_or_else(|| {
+            rusqlite::Error::InvalidColumnType(
+                0,
+                "Missing result in JSON".to_string(),
+                rusqlite::types::Type::Text,
+            )
+        })?;
+
+    let draw_date = result.get("date").and_then(|d| d.as_str()).ok_or_else(|| {
+        rusqlite::Error::InvalidColumnType(
+            0,
+            "Missing date in JSON".to_string(),
+            rusqlite::types::Type::Text,
+        )
+    })?;
+
+    let period_array = result
+        .get("period")
+        .and_then(|p| p.as_array())
+        .ok_or_else(|| {
+            rusqlite::Error::InvalidColumnType(
+                0,
+                "Missing or invalid period in JSON".to_string(),
+                rusqlite::types::Type::Text,
+            )
+        })?;
+
+    let period_str = period_array
+        .iter()
+        .filter_map(|p| p.as_i64())
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+
+    conn.execute(
+        "INSERT OR IGNORE INTO lottery_results (draw_date, period) VALUES (?1, ?2)",
+        (draw_date, &period_str),
+    )?;
+
+    let lottery_id: i64 = if conn.changes() > 0 {
+        conn.last_insert_rowid()
+    } else {
+        let mut stmt = conn.prepare("SELECT id FROM lottery_results WHERE draw_date = ?1")?;
+        stmt.query_row([draw_date], |row| row.get::<_, i64>(0))?
+    };
+
+    let data = result.get("data").ok_or_else(|| {
+        rusqlite::Error::InvalidColumnType(
+            0,
+            "Missing data in JSON".to_string(),
+            rusqlite::types::Type::Text,
+        )
+    })?;
+
+    insert_prize_categories_from_json(conn, lottery_id, data)?;
+
+    Ok(lottery_id)
+}
+
+fn insert_prize_categories_from_json(
+    conn: &Connection,
+    lottery_id: i64,
+    data: &Value,
+) -> Result<()> {
+    let categories = [
+        "first", "second", "third", "fourth", "fifth", "last2", "last3f", "last3b", "near1",
+    ];
+
+    for category_name in categories {
+        if let Some(category) = data.get(category_name) {
+            let price = category
+                .get("price")
+                .and_then(|p| p.as_str())
+                .unwrap_or("0.00");
+
+            if let Some(numbers_array) = category.get("number").and_then(|n| n.as_array()) {
+                for number_obj in numbers_array {
+                    let round_number = number_obj
+                        .get("round")
+                        .and_then(|r| r.as_i64())
+                        .unwrap_or(0) as i32;
+
+                    let number_value = number_obj
+                        .get("value")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+
+                    conn.execute(
+                        "INSERT OR IGNORE INTO prize_numbers (
+                            lottery_id, category, prize_amount, number_value, round_number
+                        ) VALUES (?1, ?2, ?3, ?4, ?5)",
+                        (lottery_id, category_name, price, number_value, round_number),
+                    )?;
+                }
+            }
+        }
+    }
+    Ok(())
 }
