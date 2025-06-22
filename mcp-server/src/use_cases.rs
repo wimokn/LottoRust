@@ -208,11 +208,12 @@ impl ApiUseCase {
 
 pub struct ReportUseCase {
     connection: Arc<rusqlite::Connection>,
+    report_path: String,
 }
 
 impl ReportUseCase {
-    pub fn new(connection: Arc<rusqlite::Connection>) -> Self {
-        Self { connection }
+    pub fn new(connection: Arc<rusqlite::Connection>, report_path: String) -> Self {
+        Self { connection, report_path }
     }
 
     pub async fn generate_and_save_report(&self, arguments: &HashMap<String, Value>) -> Result<String> {
@@ -221,12 +222,12 @@ impl ReportUseCase {
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("Missing date parameter"))?;
 
-        reports::generate_and_save_report(&self.connection, date)
+        reports::generate_and_save_report_to_path(&self.connection, date, &self.report_path)
             .map_err(|e| anyhow::anyhow!("Report generation error: {}", e))?;
         
         Ok(json!({
             "success": true,
-            "message": format!("Report generated successfully for date: {}", date)
+            "message": format!("Report generated successfully for date: {} in {}", date, self.report_path)
         }).to_string())
     }
 }

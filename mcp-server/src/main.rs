@@ -40,7 +40,7 @@ async fn main() -> Result<()> {
     };
 
     let report_use_case = {
-        ReportUseCase::new(Arc::clone(&db_conn_arc))
+        ReportUseCase::new(Arc::clone(&db_conn_arc), config.report_path.clone())
     };
 
     let handler = MCPHandler::new(

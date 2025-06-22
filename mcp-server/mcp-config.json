@@ -5,7 +5,8 @@
       "args": ["run", "--bin", "lottery-mcp-server"],
       "cwd": "/Users/wimokn/Projects/W1m0k/LottoRust/mcp-server",
       "env": {
-        "LOTTERY_DB_PATH": "../data/lottery.db"
+        "LOTTERY_DB_PATH": "../data/lottery.db",
+        "LOTTERY_REPORT_PATH": "../reports"
       }
     }
   }

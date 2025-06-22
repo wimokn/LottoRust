@@ -310,6 +310,20 @@ pub fn save_html_report(html_content: &str, filename: &str) -> Result<(), Box<dy
     Ok(())
 }
 
+pub fn save_html_report_to_path(html_content: &str, filename: &str, report_path: &str) -> Result<(), Box<dyn Error>> {
+    let filepath = Path::new(report_path).join(filename);
+    
+    // Ensure the report directory exists
+    if let Some(parent) = filepath.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    
+    let mut file = File::create(&filepath)?;
+    file.write_all(html_content.as_bytes())?;
+    println!("💾 HTML report saved to: {}", filepath.display());
+    Ok(())
+}
+
 pub fn generate_and_save_report(conn: &Connection, date: &str) -> Result<(), Box<dyn Error>> {
     println!("📋 Generating HTML report for date: {}", date);
 
@@ -320,6 +334,26 @@ pub fn generate_and_save_report(conn: &Connection, date: &str) -> Result<(), Box
 
             println!("✅ Report generated successfully!");
             println!("🌐 Open reports/{} in your browser to view the report", filename);
+
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("❌ Error generating report: {}", e);
+            Err(e)
+        }
+    }
+}
+
+pub fn generate_and_save_report_to_path(conn: &Connection, date: &str, report_path: &str) -> Result<(), Box<dyn Error>> {
+    println!("📋 Generating HTML report for date: {}", date);
+
+    match generate_html_report(conn, date) {
+        Ok(html_content) => {
+            let filename = format!("lottery_report_{}.html", date);
+            save_html_report_to_path(&html_content, &filename, report_path)?;
+
+            println!("✅ Report generated successfully!");
+            println!("🌐 Open {}/{} in your browser to view the report", report_path, filename);
 
             Ok(())
         }

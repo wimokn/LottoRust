@@ -45,7 +45,8 @@ The MCP server exposes the following tools to Claude:
          "args": ["run", "--bin", "lottery-mcp-server"],
          "cwd": "/Users/wimokn/Projects/W1m0k/LottoRust/mcp-server",
          "env": {
-           "LOTTERY_DB_PATH": "../data/lottery.db"
+           "LOTTERY_DB_PATH": "../data/lottery.db",
+           "LOTTERY_REPORT_PATH": "../reports"
          }
        }
      }
@@ -71,6 +72,7 @@ Once configured, you can use Claude to interact with the lottery database:
 ## Environment Variables
 
 - `LOTTERY_DB_PATH` - Path to the SQLite database file (default: "data/lottery.db")
+- `LOTTERY_REPORT_PATH` - Directory path for generated HTML reports (default: "reports")
 
 ## Database Schema
 
