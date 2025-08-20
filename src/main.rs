@@ -13,18 +13,45 @@ use database::{
 use reports::generate_and_save_report;
 use rusqlite::Connection;
 use std::error::Error;
+use std::fs::{self, File};
+use std::io::Read;
+use std::path::Path;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let conn = create_database()?;
 
-    // {
-    //     // RAW JSON
-    //     let raw_json_string = r#"{}"#;
-    //     let lottery_id = database::parse_and_insert_raw_json(&conn, raw_json_string)?;
-    //     println!("🎟️ Lottery ID {} inserted successfully.", lottery_id);
-    //     return Ok(());
-    // }
+    {
+        let dir_path = "./json_data"; // Path to your directory
+
+        for entry in fs::read_dir(dir_path)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                println!("Reading file: {:?}", path);
+
+                let mut file = File::open(&path)?;
+                let mut raw_json_string = String::new();
+                file.read_to_string(&mut raw_json_string)?;
+
+                // println!("Contents:\n{}\n", contents);
+
+                // Uncomment if you want to parse into a struct
+                // let data: YourStruct = serde_json::from_str(&contents)?;
+                // RAW JSON
+                //   let raw_json_string = r#"{}"#;
+                let lottery_id = database::parse_and_insert_raw_json(&conn, &raw_json_string)?;
+                println!("🎟️ Lottery ID {} inserted successfully.", lottery_id);
+            }
+        }
+
+        // RAW JSON
+        //  let raw_json_string = r#"{}"#;
+        //  let lottery_id = database::parse_and_insert_raw_json(&conn, raw_json_string)?;
+        //  println!("🎟️ Lottery ID {} inserted successfully.", lottery_id);
+        return Ok(());
+    }
 
     // let n_year = 2025;
 

@@ -16,8 +16,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Existing lottery dependencies
-reqwest = { version = "0.11", features = ["json"] }
-rusqlite = "0.29"
+reqwest = { version = "0.12", features = ["json"] }
+rusqlite = "0.37"
 chrono = "0.4.41"
 
 # Additional utilities

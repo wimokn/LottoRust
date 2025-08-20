@@ -9,10 +9,15 @@ use crate::use_cases::{LotteryUseCase, ApiUseCase, ReportUseCase};
 
 #[derive(Debug, serde::Deserialize)]
 struct JsonRpcRequest {
+    #[serde(default = "default_jsonrpc")]
     jsonrpc: String,
     method: String,
     params: Option<Value>,
     id: Option<Value>,
+}
+
+fn default_jsonrpc() -> String {
+    "2.0".to_string()
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -71,17 +76,41 @@ impl MCPHandler {
                 continue;
             }
 
-            let request: JsonRpcRequest = match serde_json::from_str(&line) {
+            let request: JsonRpcRequest = match serde_json::from_str::<JsonRpcRequest>(&line) {
                 Ok(req) => req,
                 Err(e) => {
-                    warn!("Failed to parse request: {}", e);
+                    warn!("Failed to parse request: {} - Line: {}", e, line);
+                    // Send proper error response for malformed JSON
+                    let error_response = JsonRpcResponse {
+                        jsonrpc: "2.0".to_string(),
+                        result: None,
+                        error: Some(JsonRpcError {
+                            code: -32700,
+                            message: "Parse error".to_string(),
+                            data: Some(json!(e.to_string())),
+                        }),
+                        id: None,
+                    };
+                    let response_json = serde_json::to_string(&error_response)?;
+                    writeln!(writer, "{}", response_json)?;
+                    writer.flush()?;
                     continue;
                 }
             };
 
+            // Check if this is a notification (no id field or method starts with notifications/)
+            let is_notification = request.id.is_none() || request.method.starts_with("notifications/");
+            
+            if is_notification {
+                // For notifications, just handle them but don't send any response
+                if request.method == "notifications/initialized" {
+                    info!("🎰 Client initialized");
+                }
+                continue;
+            }
+            
             let response = self.handle_request(request).await;
             let response_json = serde_json::to_string(&response)?;
-            
             writeln!(writer, "{}", response_json)?;
             writer.flush()?;
         }
@@ -102,7 +131,7 @@ impl MCPHandler {
                     message: format!("Method not found: {}", request.method),
                     data: None,
                 }),
-                id: request.id,
+                id: Some(request.id.unwrap_or(json!(1))),
             },
         }
     }
@@ -122,7 +151,7 @@ impl MCPHandler {
                 }
             })),
             error: None,
-            id,
+            id: Some(id.unwrap_or(json!(1))),
         }
     }
 
@@ -132,7 +161,7 @@ impl MCPHandler {
             jsonrpc: "2.0".to_string(),
             result: Some(json!({ "tools": tools })),
             error: None,
-            id,
+            id: Some(id.unwrap_or(json!(1))),
         }
     }
 
@@ -148,7 +177,7 @@ impl MCPHandler {
                         message: "Missing params".to_string(),
                         data: None,
                     }),
-                    id,
+                    id: Some(id.unwrap_or(json!(1))),
                 };
             }
         };
@@ -164,7 +193,7 @@ impl MCPHandler {
                         message: "Missing tool name".to_string(),
                         data: None,
                     }),
-                    id,
+                    id: Some(id.unwrap_or(json!(1))),
                 };
             }
         };
@@ -186,7 +215,7 @@ impl MCPHandler {
                     ]
                 })),
                 error: None,
-                id,
+                id: Some(id.unwrap_or(json!(1))),
             },
             Err(e) => JsonRpcResponse {
                 jsonrpc: "2.0".to_string(),
@@ -196,7 +225,7 @@ impl MCPHandler {
                     message: format!("Tool execution error: {}", e),
                     data: None,
                 }),
-                id,
+                id: Some(id.unwrap_or(json!(1))),
             },
         }
     }
